@@ -4,7 +4,30 @@ console.clear();
 const noop = () => {};
 console.warn = console.error = window.debug = noop;
 
-// Create styled splash screen element
+// EventEmitter para detectar mudanças no DOM
+class EventEmitter {
+  constructor() { this.events = {}; }
+  on(event, listener) {
+    (Array.isArray(event) ? event : [event]).forEach(e => {
+      (this.events[e] = this.events[e] || []).push(listener);
+    });
+  }
+  off(event, listener) {
+    (Array.isArray(event) ? event : [event]).forEach(e => {
+      this.events[e] && (this.events[e] = this.events[e].filter(l => l !== listener));
+    });
+  }
+  emit(event, ...args) {
+    this.events[event]?.forEach(l => l(...args));
+  }
+}
+const plppdo = new EventEmitter();
+// Observer otimizado para childList
+new MutationObserver(mutations => {
+  if (mutations.some(m => m.type === 'childList')) plppdo.emit('domChanged');
+}).observe(document.body, { childList: true, subtree: true });
+
+// Create styled splash screen
 const splashScreen = document.createElement('div');
 splashScreen.id = 'khan-destroyer-splash';
 
@@ -12,13 +35,10 @@ const style = document.createElement('style');
 style.textContent = `
   @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
   #khan-destroyer-splash {
-    position: fixed;
-    top: 0; left: 0;
+    position: fixed; top: 0; left: 0;
     width: 100vw; height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
     background: linear-gradient(135deg, #0d0d0d, #1a1a1a);
     color: #72ff72;
     font-family: 'Montserrat', sans-serif;
@@ -39,26 +59,21 @@ style.textContent = `
     color: #ffffff88;
   }
   @keyframes pulse {
-    0%, 100% { transform: scale(1); }
+    0%,100% { transform: scale(1); }
     50% { transform: scale(1.05); }
   }
 `;
 document.head.appendChild(style);
-
 document.body.appendChild(splashScreen);
 
-// Helper functions
+// Helpers
 const delay = ms => new Promise(res => setTimeout(res, ms));
-const sendToast = (text, duration = 4000) => {
-  Toastify({ text, duration, gravity: 'bottom', position: 'center', stopOnFocus: true,
-    style: { background: 'rgba(0,0,0,0.8)', color: '#fff', fontFamily: 'Montserrat,sans-serif' }
-  }).showToast();
-};
+const sendToast = (text, duration = 4000) => Toastify({ text, duration, gravity: 'bottom', position: 'center', stopOnFocus: true, style: { background: 'rgba(0,0,0,0.8)', color: '#fff', fontFamily: 'Montserrat,sans-serif' } }).showToast();
 
 async function showSplash() {
   splashScreen.innerHTML = `
     <div class="logo">KHAN <span style="color: #72ff72">DESTROYER</span></div>
-    <div class="subtitle">Carregando plugins &amp; recursos...</div>
+    <div class="subtitle">Carregando plugins & recursos...</div>
   `;
   await delay(10);
   splashScreen.style.opacity = '1';
@@ -85,19 +100,21 @@ async function loadCss(url) {
   });
 }
 
-// Main setup
+// Setup principal
 (async () => {
+  // Redirecionamento se não for Khan Academy
   if (!/^https?:\/\/(?:[a-z0-9-]+\.)?khanacademy\.org/.test(window.location.href)) {
     window.location.href = 'https://pt.khanacademy.org/';
     return;
   }
   await showSplash();
+  // Carrega DarkReader e Toastify
   await Promise.all([
     loadScript('https://cdn.jsdelivr.net/npm/darkreader@4.9.92/darkreader.min.js', 'darkReader'),
     loadCss('https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css'),
     loadScript('https://cdn.jsdelivr.net/npm/toastify-js', 'toastify')
   ]);
-  // enable dark mode
+  // Ativa dark mode customizado
   DarkReader.setFetchMethod(window.fetch);
   DarkReader.enable({ brightness: 100, contrast: 90 });
   await delay(1500);
@@ -107,13 +124,13 @@ async function loadCss(url) {
   setupMain();
 })();
 
-// Core logic with auto-click and answer modifications
 function setupMain() {
+  // Override fetch para auto-progressão
   const originalFetch = window.fetch;
   window.fetch = async function(input, init) {
     let body = init?.body;
     if (input instanceof Request) body = await input.clone().text();
-    // auto-complete video progress
+    // Completa vídeo
     if (body?.includes('"updateUserVideoProgress"')) {
       try {
         const obj = JSON.parse(body);
@@ -126,6 +143,7 @@ function setupMain() {
       } catch {}
     }
     const res = await originalFetch.apply(this, arguments);
+    // Modifica exercício se houver itemData
     try {
       const clone = res.clone();
       const text = await clone.text();
@@ -144,15 +162,12 @@ function setupMain() {
     } catch {}
     return res;
   };
-
-  // Auto-click loop
+  // Loop de cliques automáticos
   const selectors = ['[data-testid="choice-icon__library-choice-icon"]', '[data-testid="exercise-check-answer"]', '[data-testid="exercise-next-question"]', '._1udzurba', '._awve9b'];
   window.khanDestroyerRunning = true;
   plppdo.on('domChanged', async () => {
     if (!window.khanDestroyerRunning) return;
-    for (const sel of selectors) {
-      document.querySelector(sel)?.click();
-    }
+    selectors.forEach(sel => document.querySelector(sel)?.click());
     await delay(1000);
   });
 }
