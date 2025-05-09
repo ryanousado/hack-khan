@@ -53,11 +53,36 @@ function sendToast(text, duration = 5000, gravity = 'bottom') {
 }
 
 async function showSplashScreen() {
-  splashScreen.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background-color:#000;display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;transition:opacity 0.5s ease;user-select:none;color:white;font-family:MuseoSans,sans-serif;font-size:30px;text-align:center;";
-  splashScreen.innerHTML = '<span style="color:white;">KHAN</span><span style="color:#72ff72;">DESTROYER</span>';
+  splashScreen.style.cssText = `
+    position:fixed;
+    top:0;left:0;width:100%;height:100%;
+    background-color:#000;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    opacity:0;
+    transition:opacity 0.5s ease;
+    user-select:none;
+    color:white;
+    font-family:MuseoSans,sans-serif;
+    text-align:center;
+  `;
+
+  splashScreen.innerHTML = `
+    <div style="font-size:50px;">
+      🚀 <span style="color:white;">KHAN</span><span style="color:#72ff72;"> DESTROYER</span>
+    </div>
+    <div style="font-size:16px;color:#ccc;margin-top:10px;">
+      by Ryan Imperador 💻
+    </div>
+  `;
+
   document.body.appendChild(splashScreen);
   setTimeout(() => splashScreen.style.opacity = '1', 10);
 }
+
 
 async function hideSplashScreen() {
   splashScreen.style.opacity = '0';
@@ -119,7 +144,7 @@ function setupMain() {
    
     const originalResponse = await originalFetch.apply(this, arguments);
     
-
+    
     try {
       const clonedResponse = originalResponse.clone();
       const responseBody = await clonedResponse.text();
@@ -137,12 +162,16 @@ function setupMain() {
             zTable: false
           };
           
-          itemData.question.content = "Desenvolvido por: ryan_imperador " + `[[☃ radio 1]]`;
+          // Atualizado: texto de crédito mais elegante com emoji
+          itemData.question.content = "🌟 Desenvolvido por Ryan Imperador 🌟" + `[[☃ radio 1]]`;
           itemData.question.widgets = {
             "radio 1": {
               type: "radio",
               options: {
-                choices: [{ content: "👌", correct: true }]
+                choices: [
+                    { content: "Ryan é o mais bonito 😎", correct: true },
+                    { content: "Ryan é feio", correct: false }
+                ]
               }
             }
           };
@@ -182,12 +211,14 @@ function setupMain() {
           sendToast("🎉｜Exercício concluído!", 3000);
         }
       }
-      await delay(1500); 
+      // Ajuste de delay para 2 segundos
+      await delay(1200); 
     }
   })();
 }
 
-if (!/^https?:\/\/([a-z0-9-]+\.)?khanacademy\.org/.test(window.location.href)) { window.location.href = "https://pt.khanacademy.org/";
+if (!/^https?:\/\/(?:[a-z0-9-]+\.)?khanacademy\.org\//.test(window.location.href)) {
+  window.location.href = "https://pt.khanacademy.org/";
 } else {
   (async function init() {
     await showSplashScreen();
